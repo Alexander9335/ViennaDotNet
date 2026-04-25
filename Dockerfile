@@ -1,23 +1,25 @@
-# Stage 1: Build
+# Build Stage
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
-WORKDIR /src
+WORKDIR /source
+
+# Copy everything from your repo
 COPY . .
 
-# Using the exact path from your logs
-RUN dotnet publish "src/ViennaDotNet.BuildplateRenderer/ViennaDotNet.BuildplateRenderer.csproj" \
+# Find the project file automatically and publish it
+# We use --use-current-runtime to force it to match the environment
+RUN dotnet publish $(find . -name "ViennaDotNet.BuildplateRenderer.csproj") \
     -c Release \
-    -o /app/publish \
+    -o /app/out \
     --self-contained false
 
-# Stage 2: Runtime
+# Runtime Stage
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 
-# Copy EVERYTHING (this includes the missing .runtimeconfig.json)
-COPY --from=build /app/publish .
+# Copy the output directly into the /app folder
+COPY --from=build /app/out ./
 
-# Force the environment to see the libraries
-ENV LD_LIBRARY_PATH=/usr/share/dotnet/shared/Microsoft.NETCore.App/10.0.0
-ENV DOTNET_ROOT=/usr/share/dotnet
+# Final check: List files in logs to see if the json is actually there
+RUN ls -la /app
 
 ENTRYPOINT ["dotnet", "ViennaDotNet.BuildplateRenderer.dll"]
