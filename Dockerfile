@@ -3,7 +3,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY . .
 
-# We publish with --no-self-contained to keep it simple
+# Using the exact path from your logs
 RUN dotnet publish "src/ViennaDotNet.BuildplateRenderer/ViennaDotNet.BuildplateRenderer.csproj" \
     -c Release \
     -o /app/publish \
@@ -13,9 +13,11 @@ RUN dotnet publish "src/ViennaDotNet.BuildplateRenderer/ViennaDotNet.BuildplateR
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 
-# Copy all published files
+# Copy EVERYTHING (this includes the missing .runtimeconfig.json)
 COPY --from=build /app/publish .
 
-# The CRITICAL FIX: Tell .NET exactly where the app is and how to run it
-ENV ASPNETCORE_URLS=http://+:10000
+# Force the environment to see the libraries
+ENV LD_LIBRARY_PATH=/usr/share/dotnet/shared/Microsoft.NETCore.App/10.0.0
+ENV DOTNET_ROOT=/usr/share/dotnet
+
 ENTRYPOINT ["dotnet", "ViennaDotNet.BuildplateRenderer.dll"]
