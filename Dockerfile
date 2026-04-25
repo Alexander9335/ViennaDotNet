@@ -3,22 +3,21 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /source
 COPY . .
 
-# Force the creation of runtimeconfig.json and copy everything to /app/out
-RUN dotnet publish "src/ViennaDotNet.BuildplateRenderer/ViennaDotNet.BuildplateRenderer.csproj" \
+# Publish the ApiServer specifically
+RUN dotnet publish "src/ViennaDotNet.ApiServer/ViennaDotNet.ApiServer.csproj" \
     -c Release \
     -o /app/out \
-    --self-contained false \
-    -p:CopyLocalLockFileAssemblies=true \
-    -p:GenerateRuntimeConfigurationFiles=true
+    --self-contained false
 
 # Runtime Stage
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
-
-# Copy the output directly
 COPY --from=build /app/out ./
 
-# Check the file list again - we MUST see the .runtimeconfig.json file here
-RUN ls -la /app
+# Tell .NET to listen on the port Render provides
+ENV ASPNETCORE_URLS=http://+:10000
 
-ENTRYPOINT ["dotnet", "ViennaDotNet.BuildplateRenderer.dll"]
+# Expose the common port
+EXPOSE 10000
+
+ENTRYPOINT ["dotnet", "ViennaDotNet.ApiServer.dll"]
