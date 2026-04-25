@@ -1,20 +1,22 @@
-# Use the .NET 10.0 SDK
+# Use the .NET 10.0 SDK for building
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
-WORKDIR /app
+WORKDIR /src
 
 # Copy everything
 COPY . .
 
-# Find and restore the project
+# Find the project file and restore/publish
+# Using 'find' is safer because the .csproj might be in a subfolder
 RUN dotnet restore $(find . -name "*.csproj" | head -n 1)
+RUN dotnet publish $(find . -name "*.csproj" | head -n 1) -c Release -o /app/publish
 
-# Build and publish
-RUN dotnet publish $(find . -name "*.csproj" | head -n 1) -c Release -o out
-
-# Use the .NET 10.0 runtime
+# Use the .NET 10.0 runtime for the final server
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
-COPY --from=build /app/out .
+
+# Copy the published files from the build stage to the current folder
+COPY --from=build /app/publish .
 
 # Start the application
+# This finds the main .dll file automatically
 ENTRYPOINT ["sh", "-c", "dotnet $(ls *.dll | head -n 1)"]
